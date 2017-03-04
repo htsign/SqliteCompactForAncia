@@ -1,0 +1,75 @@
+﻿#pragma indent
+
+using Nemerle.Collections.NList
+using Nemerle.Extensions
+using Nemerle.Text
+
+using System
+using System.Console
+using System.Diagnostics
+using System.IO
+using System.IO.Compression
+using System.Net
+using System.Reflection
+using System.Text
+using System.Text.RegularExpressions
+
+module Program
+  private Here = Assembly.GetExecutingAssembly().Location |> Path.GetDirectoryName
+  
+  Main() : void
+    def download(url)
+      using (wc = WebClient() <- BaseAddress = "http://www.sqlite.org")
+        wc.DownloadData(url)
+    
+    def fetchExecutable()
+      def page = download("download.html") |> Encoding.UTF8.GetString
+      // exeファイル入りzipのURLを取得
+      match (Regex.Match(page, <#\('a\d+?','(?<href>\d+/sqlite\-tools\-win32\-x86(?:\-\d+?)?\.zip)'\)#>))
+        | m when m != null =>
+          def temp = Path.GetTempFileName()
+          try
+            // byte配列データをダウンロードしてテンポラリファイルに出力
+            Write("downloading...")
+            using (ms = download(m.Groups["href"].Value) |> MemoryStream, fs = FileStream(temp, FileMode.Create))
+              ms.CopyTo(fs)
+              WriteLine(" done.")
+            using (archive = ZipFile.OpenRead(temp))
+              foreach (entry in archive.Entries) regexp match (entry.Name)
+                // 実行ファイルを展開
+                | @"(?<fname>sqlite\d*\.exe)" =>
+                  Write("extracting...")
+                  Path.Combine(Here, fname) |> entry.ExtractToFile
+                  WriteLine(" done.")
+                | _ => ()
+          finally
+            File.Delete(temp)
+        | _ =>
+          throw FileNotFoundException("An archive file is not found in download page.")
+          Environment.Exit(1)
+    
+    def getSqlite()
+      def files = Directory.GetFiles(Here) |> ToList |> Filter(_, Regex.IsMatch(_, @"sqlite\d*\.exe"))
+      if (files.Length > 0)
+        files.Head
+      else
+        // 無かったらネットから取ってくる
+        fetchExecutable()
+        getSqlite()
+    
+    def sqlite = getSqlite()
+    def compact(path : string)
+      try
+        Write($"compacting $(path |> Path.GetFileName) ...")
+        def psi = ProcessStartInfo(sqlite, $"$path vacuum") <-
+          UseShellExecute = false;
+          CreateNoWindow = true;
+        def proc = Process() <- StartInfo = psi
+        _ = proc.Start()
+        proc.WaitForExit()
+        WriteLine(" done.")
+      catch
+        | _ => ()
+    
+    Directory.GetFiles(Here, "*.db?", SearchOption.AllDirectories) |> ToList |> Iter(_, compact)
+    
