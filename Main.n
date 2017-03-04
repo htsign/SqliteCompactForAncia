@@ -23,6 +23,9 @@ module Program
         wc.DownloadData(url)
     
     def fetchExecutable()
+      def throwNotFound = () =>
+        throw FileNotFoundException("An archive file is not found in download page.")
+        Environment.Exit(1)
       def page = download("download.html") |> Encoding.UTF8.GetString
       // exeファイル入りzipのURLを取得
       match (Regex.Match(page, <#\('a\d+?','(?<href>\d+/sqlite\-tools\-win32\-x86(?:\-\d+?)?\.zip)'\)#>))
@@ -42,11 +45,10 @@ module Program
                   Path.Combine(Here, fname) |> entry.ExtractToFile
                   WriteLine(" done.")
                 | _ => ()
+              otherwise throwNotFound()
           finally
             File.Delete(temp)
-        | _ =>
-          throw FileNotFoundException("An archive file is not found in download page.")
-          Environment.Exit(1)
+        | _ => throwNotFound()
     
     def getSqlite()
       def files = Directory.GetFiles(Here) |> ToList |> Filter(_, Regex.IsMatch(_, @"sqlite\d*\.exe"))

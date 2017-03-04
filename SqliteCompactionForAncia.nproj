@@ -8,15 +8,17 @@
     <ProjectGuid>e3aac450-bf29-463c-b209-12983fff7c08</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SqliteCompactForAncia</RootNamespace>
-    <AssemblyName>SqliteCompactForAncia</AssemblyName>
+    <RootNamespace>SqliteCompactionForAncia</RootNamespace>
+    <AssemblyName>SqliteCompactionForAncia</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <NoStdLib>true</NoStdLib>
     <NemerleVersion>Net-4.0</NemerleVersion>
     <NemerleBinPathRoot Condition=" '$(NemerleBinPathRoot)' == '' ">$(ProgramFiles)\Nemerle</NemerleBinPathRoot>
     <Nemerle Condition=" '$(Nemerle)' == '' ">$(NemerleBinPathRoot)\$(NemerleVersion)</Nemerle>
-    <Name>SqliteCompactForAncia</Name>
+    <Name>SqliteCompactionForAncia</Name>
+    <StartupObject />
+    <ApplicationIcon />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
