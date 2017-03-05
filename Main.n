@@ -36,7 +36,8 @@ module Program
             Write("downloading...")
             using (ms = download(m.Groups["href"].Value) |> MemoryStream, fs = FileStream(temp, FileMode.Create))
               ms.CopyTo(fs)
-              WriteLine(" done.")
+            WriteLine(" done.")
+            
             using (archive = ZipFile.OpenRead(temp))
               foreach (entry in archive.Entries) regexp match (entry.Name)
                 // 実行ファイルを展開
@@ -62,7 +63,7 @@ module Program
     def sqlite = getSqlite()
     def compact(path : string)
       try
-        Write($"compacting $(path |> Path.GetFileName) ...")
+        Write($"compacting $(path |> Path.GetFileName)...")
         def psi = ProcessStartInfo(sqlite, $"$path vacuum") <-
           UseShellExecute = false;
           CreateNoWindow = true;
@@ -73,5 +74,9 @@ module Program
       catch
         | _ => ()
     
-    Directory.GetFiles(Here, "*.db?", SearchOption.AllDirectories) |> ToList |> Iter(_, compact)
+    def exts = [".db", ".db3"]
+    Directory.GetFiles(Here, "*", SearchOption.AllDirectories) \
+      |> ToList \
+      |> Filter(_, s => Path.GetExtension(s) |> exts.Contains) \
+      |> Iter(_, compact)
     
