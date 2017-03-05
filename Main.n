@@ -1,6 +1,5 @@
 ﻿#pragma indent
 
-using Nemerle.Collections.NList
 using Nemerle.Extensions
 using Nemerle.Text
 
@@ -9,6 +8,7 @@ using System.Console
 using System.Diagnostics
 using System.IO
 using System.IO.Compression
+using System.Linq
 using System.Net
 using System.Reflection
 using System.Text
@@ -23,7 +23,7 @@ module Program
         wc.DownloadData(url)
     
     def fetchExecutable()
-      def throwNotFound = () =>
+      def throwsNotFound = () =>
         throw FileNotFoundException("An archive file is not found in download page.")
         Environment.Exit(1)
       def page = download("download.html") |> Encoding.UTF8.GetString
@@ -34,8 +34,7 @@ module Program
           try
             // byte配列データをダウンロードしてテンポラリファイルに出力
             Write("downloading...")
-            using (ms = download(m.Groups["href"].Value) |> MemoryStream, fs = FileStream(temp, FileMode.Create))
-              ms.CopyTo(fs)
+            download(m.Groups["href"].Value) |> File.WriteAllBytes(temp, _)
             WriteLine(" done.")
             
             using (archive = ZipFile.OpenRead(temp))
@@ -46,24 +45,23 @@ module Program
                   Path.Combine(Here, fname) |> entry.ExtractToFile
                   WriteLine(" done.")
                 | _ => ()
-              otherwise throwNotFound()
+              otherwise throwsNotFound()
           finally
             File.Delete(temp)
-        | _ => throwNotFound()
+        | _ => throwsNotFound()
     
     def getSqlite()
-      def files = Directory.GetFiles(Here) |> ToList |> Filter(_, Regex.IsMatch(_, @"sqlite\d*\.exe"))
-      if (files.Length > 0)
-        files.Head
-      else
+      def files = Directory.EnumerateFiles(Here)
+      files.FirstOrDefault <| Regex.IsMatch(_, @"sqlite\d*\.exe") ??
         // 無かったらネットから取ってくる
         fetchExecutable()
         getSqlite()
     
     def sqlite = getSqlite()
-    def compact(path : string)
+    def compact(path)
+      Write($"compacting $(path |> Path.GetFileName)...")
       try
-        Write($"compacting $(path |> Path.GetFileName)...")
+        // コンパクション実行
         def psi = ProcessStartInfo(sqlite, $"$path vacuum") <-
           UseShellExecute = false;
           CreateNoWindow = true;
@@ -72,11 +70,10 @@ module Program
         proc.WaitForExit()
         WriteLine(" done.")
       catch
-        | _ => ()
+        | _ => WriteLine(" failed.")
     
-    def exts = [".db", ".db3"]
-    Directory.GetFiles(Here, "*", SearchOption.AllDirectories) \
-      |> ToList \
-      |> Filter(_, s => Path.GetExtension(s) |> exts.Contains) \
-      |> Iter(_, compact)
+    def extAcceptable = s => Path.GetExtension(s) |> [".db", ".db3"].Contains
+    def files = Directory.EnumerateFiles(Here, "*", SearchOption.AllDirectories)
+    foreach (path when extAcceptable(path) in files)
+      compact(path)
     
